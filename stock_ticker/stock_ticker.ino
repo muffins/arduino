@@ -12,7 +12,7 @@ const String kPassword = "my.little.pwnies";
 // Yahoo Finance API information
 const char* kYahooApi = "https://apidojo-yahoo-finance-v1.p.rapidapi.com/market/get-summary?region=US&lang=en";
 const char* kApiHost = "apidojo-yahoo-finance-v1.p.rapidapi.com";
-const char* kApiKey = "2822998c09msh41e18f03cdf82dep115067jsndc7284e628ad";
+const char* kApiKey = "";
 
 // Max document size that we can parse for JSON
 const size_t kMaxJsonDoc = 0x4096;
