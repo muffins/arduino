@@ -8,5 +8,5 @@ POSTed out to an external graphana endpoint for analysis.
 
 ### Extras
 Guides for Wiring and Code Samples:
-[Good guide for Wiring](https://learn.adafruit.com/using-ds18b20-temperature-sensor-with-circuitpython/)hardware
+[Good guide for Wiring](https://learn.adafruit.com/using-ds18b20-temperature-sensor-with-circuitpython/hardware)
 [Good code samples](https://create.arduino.cc/projecthub/TheGadgetBoy/ds18b20-digital-temperature-sensor-and-arduino-9cc806)

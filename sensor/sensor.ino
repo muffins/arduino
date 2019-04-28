@@ -1,6 +1,6 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include <SD.h>
+//#include <SD.h>
 
 /********************************************************************/
 // Data wire is plugged into pin 5 on the Arduino 
@@ -21,11 +21,13 @@ void setup() {
   // initialize digital pin LED_BUILTIN as an output.
   pinMode(LED_BUILTIN, OUTPUT);
 
+  /*
   Serial.println("Initializing SDcard");
   if (!SD.begin(cardSelect)) {
     Serial.println("Card init. failed!");
     error(2);
   }
+  */
 
   Serial.println("Temperature sensor initialized");
   sensors.begin();
