@@ -1,7 +1,15 @@
+/*
+ * Nick Anderson - 2019
+ * 
+ * A program to fetch stock prices for various symbols and display them
+ * on an Arduino OLED display
+ */
 
 #include <Arduino.h>
+
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+
 #include <ArduinoJson.h>
 
 #include <ESP8266WiFi.h>
@@ -11,36 +19,44 @@
 
 #include <WiFiClientSecureBearSSL.h>
 
-//#include <WiFiClient.h>
-
 // Wifi credential information
 const String kSsid = "Pwn135";
 const String kPassword = "my.little.pwnies";
 
-// Yahoo Finance API information
-const char* kYahooApi = "/market/get-summary?region=US&lang=en";
-const char* kApiHost = "apidojo-yahoo-finance-v1.p.rapidapi.com";
-const char* kApiUri = "https://apidojo-yahoo-finance-v1.p.rapidapi.com/market/get-summary?region=US&lang=en";
+// AlphaVantage API information, they have free tokens ;)
 //const char* kApiUri = "https://canhazip.com";
-const uint16_t kApiPort = 443;
-const char* kApiKey = "2822998c09msh41e18f03cdf82dep115067jsndc7284e628ad";
+const String kApiUri = "https://www.alphavantage.co";
+const String kApiBaseUri = "https://www.alphavantage.co/query?";
+const String kApiStockPrice = "function=GLOBAL_QUOTE&";
+const String kApiExchangeRate = "function=CURRENCY_EXCHANGE_RATE&";
+const String kApiFromCurrency = "from_currency=BTC&";
+// Note: we leave the & off of this one as the last piece is the kApiKey
+const String kApiToCurrency = "to_currency=USD";
+const String kApiTicker = "symbol=";
+const String kApiKey = "&apikey=NDZC0JRPWV6C3UDA";
+
+// Define additional ticker symbols here
+const String kTickerSymbols[] = {
+  "FB",   // Facebook
+  "MSFT", // Microsoft
+  "AAPL", // Apple
+  "NFLX", // Netflix
+  "PANW", // Palo Alto Networks
+  "FEYE", // Fire Eye
+  "AMZN", // Amazon
+  "AMD",  // AMD
+  "BREW"  // Craft Brew Alliance
+};
 
 // Max document size that we can parse for JSON
-const size_t kMaxJsonDoc = 0x4096;
+const size_t kMaxJsonDoc = 0x1000;
 
 // Main loop pause
 const size_t kMainDelay = 10000;
 
-// Use web browser to view and copy
-// SHA1 fingerprint of the certificate
-const char* kYahooApiFingerprint = "01 3E 44 23 62 2D 92 54 6D 75 7B 2C 60 A7 33 A2 FB 60 C1 3E";
-/*
-const uint8_t kCanHazFingerprint[20] = {
-  0x3, 0x11, 0x70, 0xBA, 0x7D, 0x5D, 0xD1, 0xE0, 0x3C, 0x80, 
-  0xA8, 0x5B, 0xB2, 0x8F, 0x28, 0x57, 0x67, 0xA1, 0xFC, 0x4A
-};
-*/
-const char* kCanHazFingerprint = "39 11 70 BA 7D 5D D1 E0 3C 80 A8 5B B2 8F 28 57 67 A1 FC 4A";
+// SHA1 fingerprint of the sites certificate
+const char* kAlphaVantageFingerprint = "9E 0B E5 F1 F4 1A 2F 29 8A 7A AA 9D B5 30 54 39 4C 20 A1 6C";
+//const char* kCanHazFingerprint = "39 11 70 BA 7D 5D D1 E0 3C 80 A8 5B B2 8F 28 57 67 A1 FC 4A";
 
 // TODO: A logo?
 static const unsigned char kOsqueryLogo [] = {
@@ -54,8 +70,10 @@ static const unsigned char kOsqueryLogo [] = {
   0xE0, 0x0F, 0x07, 0xF0, 0xC0, 0x07, 0x03, 0xF8, 0x80, 0x03, 0x01, 0xFC, 0x00, 0x01, 0x00, 0xFE
 };
 
+// Init the SSD1306 display
 Adafruit_SSD1306 display = Adafruit_SSD1306();
 
+// Init the ESP8266 Wifi Module
 ESP8266WiFiMulti WiFiMulti;
 
 void setup() {
@@ -92,31 +110,31 @@ void setup() {
   Serial.print(" with IP address: ");
   Serial.println(WiFi.localIP());
   display.setCursor(0,15);
-  display.print("IP: " + WiFi.localIP());
+  display.print("IP: " + WiFi.localIP().toString());
   display.display();
   delay(2000);
 }
 
-// Fetches a string response from a remote URI
-int getMktSummary(String& resp) {
-
+// Fetches a string response from a remote API endpoint URI
+int getApiResponse(const String& uri, String& resp) {
+  Serial.println("Fetching resource from " + uri);
   std::unique_ptr<BearSSL::WiFiClientSecure>secure_client(new BearSSL::WiFiClientSecure);
   
   //secure_client->setFingerprint(kCanHazFingerprint);
-  secure_client->setFingerprint(kYahooApiFingerprint);
+  secure_client->setFingerprint(kAlphaVantageFingerprint);
   secure_client->setTimeout(3000);
 
   /*
-   * For generic HTTP requests:
-     HTTPClient http;
-     WiFiClient client;
-     Serial.println("Beginning connection to API endpoint");
-     auto ret = http.begin(client, kApiUri);
-   */
+  // For generic HTTP requests
+  HTTPClient http;
+  WiFiClient client;
+  Serial.println("Beginning connection to API endpoint");
+  auto ret = http.begin(client, kApiUri);
+  */
   
   HTTPClient https;
-  Serial.println("Beginning connection to API endpoint");
-  auto ret = https.begin(*secure_client, kApiUri);
+  Serial.println("Beginning connection to secure API endpoint");
+  auto ret = https.begin(*secure_client, uri);
 
   if (!ret) {
     Serial.println("Failed to connect to URI with " + String(ret));
@@ -131,28 +149,79 @@ int getMktSummary(String& resp) {
   }
 
   resp = https.getString();
-  Serial.println("Successfully connected to " + String(kApiHost));
+  Serial.println("Successfully connected to " + String(kApiUri));
   Serial.println(resp);
 
   return status;
 }
- 
+
+void oledPrintScreen(String msg) {
+
+}
+
 void loop() {
   
-  Serial.println("Fetching Market Summary");
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.print("Fetching summary...\n");
-  display.display();
-  delay(2000);
-  String summary;
-  auto ret = getMktSummary(summary);
-  Serial.println(summary);
+  // We fetch stock values in a loop around the ticker symbols, defined above
+  for(const String sym : kTickerSymbols) {
 
-  auto msg = "ret: " + String(ret);
-  display.setCursor(0,15);
-  display.print(msg);
-  display.display();
+    String msg = "Fetching price for " + sym;
+    Serial.println(msg);
+    
+    //delay(500);
+    // Perform the API request
+    String resp;
+    String uri = kApiBaseUri + kApiStockPrice + sym + kApiKey;
+    Serial.println("Calling get api response");
+    auto ret = getApiResponse(uri, resp);
+    if (ret == 1) {
+      Serial.println("Fetch remote resource failed. Continuing");
+      continue;
+    }
+    Serial.println("Got back:\n" + resp);
 
-  delay(kMainDelay);
+    // Parse the response into a JSON object
+    StaticJsonDocument<kMaxJsonDoc> doc;
+    auto err = deserializeJson(doc, resp);
+    if (err) {
+      Serial.println("Failed to parse response to JSON with " + String(err.c_str()));
+      continue;
+    }
+
+    // We display the price
+    auto quote = doc["Global Quote"];
+    auto quote_msg = sym + ": " + quote["05. price"].as<String>() + ", " + 
+                     quote["09. change"].as<String>() + " (" + 
+                     quote["10. change percent"].as<String>() + ")";
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.print(quote_msg);
+    display.display();
+    delay(kMainDelay);
+  }
+
+  // Lastly, fetch the USD -> BTC exchange rate, for funsies
+  String resp;
+  String uri = kApiBaseUri + kApiExchangeRate + kApiFromCurrency + 
+               kApiToCurrency + kApiKey;
+  auto ret = getApiResponse(uri, resp);
+  Serial.println("Got back:\n" + resp);
+
+  // Parse the response into a JSON object
+  StaticJsonDocument<kMaxJsonDoc> doc;
+  auto err = deserializeJson(doc, resp);
+  if (err) {
+    Serial.println("Failed to parse response to JSON with " + String(err.c_str()));
+  } else {
+    // We display the price
+    auto er = doc["Realtime Currency Exchange Rate"] ;
+    auto msg = er["1. From_Currency Code"].as<String>() + " -> " + 
+               er["3. To_Currency Code"].as<String>() + ": " + 
+               er["5. Exchange Rate"].as<String>();
+    Serial.println("Failed to parse response to JSON with " + String(err.c_str()));
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.print(msg);
+    display.display();
+    delay(kMainDelay);
+  }
 }
