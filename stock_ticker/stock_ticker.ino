@@ -1,15 +1,7 @@
-/*
- * Nick Anderson - 2019
- * 
- * A program to fetch stock prices for various symbols and display them
- * on an Arduino OLED display
- */
 
 #include <Arduino.h>
-
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-
 #include <ArduinoJson.h>
 
 #include <ESP8266WiFi.h>
@@ -19,10 +11,13 @@
 
 #include <WiFiClientSecureBearSSL.h>
 
+//#include <WiFiClient.h>
+
 // Wifi credential information
 const String kSsid = "Pwn135";
 const String kPassword = "my.little.pwnies";
 
+<<<<<<< HEAD
 // AlphaVantage API information, they have free tokens ;)
 //const char* kApiUri = "https://canhazip.com";
 const String kApiUri = "https://www.alphavantage.co";
@@ -50,13 +45,32 @@ const String kTickerSymbols[] = {
 
 // Max document size that we can parse for JSON
 const size_t kMaxJsonDoc = 1024;
+=======
+// Yahoo Finance API information
+const char* kYahooApi = "/market/get-summary?region=US&lang=en";
+const char* kApiHost = "apidojo-yahoo-finance-v1.p.rapidapi.com";
+//const char* kApiUri = "https://apidojo-yahoo-finance-v1.p.rapidapi.com/market/get-summary?region=US&lang=en";
+const char* kApiUri = "https://canhazip.com";
+const uint16_t kApiPort = 443;
+const char* kApiKey = "2822998c09msh41e18f03cdf82dep115067jsndc7284e628ad";
+
+// Max document size that we can parse for JSON
+const size_t kMaxJsonDoc = 0x4096;
+>>>>>>> sensor: printing temperature to OLED
 
 // Main loop pause
 const size_t kMainDelay = 10000;
 
-// SHA1 fingerprint of the sites certificate
-const char* kAlphaVantageFingerprint = "9E 0B E5 F1 F4 1A 2F 29 8A 7A AA 9D B5 30 54 39 4C 20 A1 6C";
-//const char* kCanHazFingerprint = "39 11 70 BA 7D 5D D1 E0 3C 80 A8 5B B2 8F 28 57 67 A1 FC 4A";
+// Use web browser to view and copy
+// SHA1 fingerprint of the certificate
+const char* kYahooApiFingerprint = "01 3E 44 23 62 2D 92 54 6D 75 7B 2C 60 A7 33 A2 FB 60 C1 3E";
+/*
+const uint8_t kCanHazFingerprint[20] = {
+  0x3, 0x11, 0x70, 0xBA, 0x7D, 0x5D, 0xD1, 0xE0, 0x3C, 0x80, 
+  0xA8, 0x5B, 0xB2, 0x8F, 0x28, 0x57, 0x67, 0xA1, 0xFC, 0x4A
+};
+*/
+const char* kCanHazFingerprint = "39 11 70 BA 7D 5D D1 E0 3C 80 A8 5B B2 8F 28 57 67 A1 FC 4A";
 
 // TODO: A logo?
 static const unsigned char kOsqueryLogo [] = {
@@ -70,10 +84,8 @@ static const unsigned char kOsqueryLogo [] = {
   0xE0, 0x0F, 0x07, 0xF0, 0xC0, 0x07, 0x03, 0xF8, 0x80, 0x03, 0x01, 0xFC, 0x00, 0x01, 0x00, 0xFE
 };
 
-// Init the SSD1306 display
 Adafruit_SSD1306 display = Adafruit_SSD1306();
 
-// Init the ESP8266 Wifi Module
 ESP8266WiFiMulti WiFiMulti;
 
 void setup() {
@@ -110,22 +122,37 @@ void setup() {
   Serial.print(" with IP address: ");
   Serial.println(WiFi.localIP());
   display.setCursor(0,15);
-  display.print("IP: " + WiFi.localIP().toString());
+  display.print("IP: " + WiFi.localIP());
   display.display();
   delay(2000);
 }
 
-// Fetches a string response from a remote API endpoint URI
-int getApiResponse(const String& uri, String& resp) {
-  Serial.println("Fetching resource from " + uri);
+// Fetches a string response from a remote URI
+int getMktSummary(String& resp) {
+
   std::unique_ptr<BearSSL::WiFiClientSecure>secure_client(new BearSSL::WiFiClientSecure);
   
+<<<<<<< HEAD
   secure_client->setFingerprint(kAlphaVantageFingerprint);
   secure_client->setTimeout(3000);
 
+=======
+  secure_client->setFingerprint(kCanHazFingerprint);
+  //secure_client->setFingerprint(kYahooApiFingerprint);
+  secure_client->setTimeout(3000);
+
+  /*
+   * For generic HTTP requests:
+     HTTPClient http;
+     WiFiClient client;
+     Serial.println("Beginning connection to API endpoint");
+     auto ret = http.begin(client, kApiUri);
+   */
+  
+>>>>>>> sensor: printing temperature to OLED
   HTTPClient https;
-  Serial.println("Beginning connection to secure API endpoint");
-  auto ret = https.begin(*secure_client, uri);
+  Serial.println("Beginning connection to API endpoint");
+  auto ret = https.begin(*secure_client, kApiUri);
 
   if (!ret) {
     Serial.println("Failed to connect to URI with " + String(ret));
@@ -140,11 +167,16 @@ int getApiResponse(const String& uri, String& resp) {
   }
 
   resp = https.getString();
+<<<<<<< HEAD
   Serial.println("Successfully retrieved data from " + kApiUri);
+=======
+  Serial.println("Successfully connected to " + String(kApiHost));
+>>>>>>> sensor: printing temperature to OLED
   Serial.println(resp);
 
   return status;
 }
+<<<<<<< HEAD
 
 void loop() {
   
@@ -210,4 +242,25 @@ void loop() {
     delay(kMainDelay);
   }
   */
+=======
+ 
+void loop() {
+  
+  Serial.println("Fetching Market Summary");
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print("Fetching summary...\n");
+  display.display();
+  delay(2000);
+  String summary;
+  auto ret = getMktSummary(summary);
+  Serial.println(summary);
+
+  auto msg = "ret: " + String(ret);
+  display.setCursor(0,15);
+  display.print(msg);
+  display.display();
+
+  delay(kMainDelay);
+>>>>>>> sensor: printing temperature to OLED
 }

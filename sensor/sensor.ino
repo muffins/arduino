@@ -2,6 +2,9 @@
 #include <DallasTemperature.h>
 //#include <SD.h>
 
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
 /********************************************************************/
 // Data wire is plugged into pin 5 on the Arduino 
 #define ONE_WIRE_BUS 5
@@ -14,12 +17,29 @@ OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 /********************************************************************/
 
+// Init the SSD1306 display
+Adafruit_SSD1306 display = Adafruit_SSD1306();
+
+
+const size_t kFontSize = 2;
+
+
+
+
 // the setup function runs once when you press reset or power the board
 void setup() {
   Serial.begin(115200);
   
   // initialize digital pin LED_BUILTIN as an output.
   pinMode(LED_BUILTIN, OUTPUT);
+
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  display.clearDisplay();
+  display.display();
+  display.setTextSize(kFontSize);
+  display.setTextColor(WHITE);
+  display.setCursor(0,0);
+  display.display();
 
   /*
   Serial.println("Initializing SDcard");
@@ -46,7 +66,13 @@ void loop() {
 
   // Send the command to get temperature readings
   sensors.requestTemperatures();
-  
-  Serial.println("Temperature is: "); 
-  Serial.println(sensors.getTempFByIndex(0));
+  auto temp = sensors.getTempFByIndex(0);
+
+  auto msg = "Temp is: " + String(temp) + "F";
+  Serial.println(msg);
+
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.print(msg);
+  display.display();
 }
