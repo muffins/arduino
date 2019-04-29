@@ -32,7 +32,7 @@ const String kApiExchangeRate = "function=CURRENCY_EXCHANGE_RATE&";
 const String kApiFromCurrency = "from_currency=BTC&";
 // Note: we leave the & off of this one as the last piece is the kApiKey
 const String kApiToCurrency = "to_currency=USD";
-const String kApiTicker = "symbol=";
+const String kApiSymbol = "symbol=";
 const String kApiKey = "&apikey=NDZC0JRPWV6C3UDA";
 
 // Define additional ticker symbols here
@@ -49,7 +49,7 @@ const String kTickerSymbols[] = {
 };
 
 // Max document size that we can parse for JSON
-const size_t kMaxJsonDoc = 0x1000;
+const size_t kMaxJsonDoc = 1024;
 
 // Main loop pause
 const size_t kMainDelay = 10000;
@@ -120,18 +120,9 @@ int getApiResponse(const String& uri, String& resp) {
   Serial.println("Fetching resource from " + uri);
   std::unique_ptr<BearSSL::WiFiClientSecure>secure_client(new BearSSL::WiFiClientSecure);
   
-  //secure_client->setFingerprint(kCanHazFingerprint);
   secure_client->setFingerprint(kAlphaVantageFingerprint);
   secure_client->setTimeout(3000);
 
-  /*
-  // For generic HTTP requests
-  HTTPClient http;
-  WiFiClient client;
-  Serial.println("Beginning connection to API endpoint");
-  auto ret = http.begin(client, kApiUri);
-  */
-  
   HTTPClient https;
   Serial.println("Beginning connection to secure API endpoint");
   auto ret = https.begin(*secure_client, uri);
@@ -149,29 +140,22 @@ int getApiResponse(const String& uri, String& resp) {
   }
 
   resp = https.getString();
-  Serial.println("Successfully connected to " + String(kApiUri));
+  Serial.println("Successfully retrieved data from " + kApiUri);
   Serial.println(resp);
 
   return status;
 }
 
-void oledPrintScreen(String msg) {
-
-}
-
 void loop() {
   
   // We fetch stock values in a loop around the ticker symbols, defined above
-  for(const String sym : kTickerSymbols) {
+  for(const auto sym : kTickerSymbols) {
+    Serial.println("Fetching price for " + sym);
 
-    String msg = "Fetching price for " + sym;
-    Serial.println(msg);
-    
-    //delay(500);
     // Perform the API request
     String resp;
-    String uri = kApiBaseUri + kApiStockPrice + sym + kApiKey;
-    Serial.println("Calling get api response");
+    String uri = kApiBaseUri + kApiStockPrice + kApiSymbol + sym + kApiKey;
+    Serial.println("Calling GET to " + uri);
     auto ret = getApiResponse(uri, resp);
     if (ret == 1) {
       Serial.println("Fetch remote resource failed. Continuing");
@@ -200,6 +184,7 @@ void loop() {
   }
 
   // Lastly, fetch the USD -> BTC exchange rate, for funsies
+  /*
   String resp;
   String uri = kApiBaseUri + kApiExchangeRate + kApiFromCurrency + 
                kApiToCurrency + kApiKey;
@@ -224,4 +209,5 @@ void loop() {
     display.display();
     delay(kMainDelay);
   }
+  */
 }
