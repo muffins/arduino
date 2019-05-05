@@ -51,7 +51,7 @@ const String kTickerSymbols[] = {
 const size_t kMaxJsonDoc = 1024;
 
 // Main loop pause
-const size_t kMainDelay = 5000;
+const size_t kMainDelay = 15000;
 
 // SHA1 fingerprint of the sites certificate
 const char* kAlphaVantageFingerprint = "9E 0B E5 F1 F4 1A 2F 29 8A 7A AA 9D B5 30 54 39 4C 20 A1 6C";
@@ -135,6 +135,8 @@ int getApiResponse(const String& uri, String& resp) {
 void loop() {
   
   // We fetch stock values in a loop around the ticker symbols, defined above
+  // Keep track of our doc? Does this fix our stack traces?
+  StaticJsonDocument<kMaxJsonDoc> doc;
   for(const auto sym : kTickerSymbols) {
     Serial.println("Fetching price for " + sym);
 
@@ -150,7 +152,6 @@ void loop() {
     Serial.println("Got back:\n" + resp);
 
     // Parse the response into a JSON object
-    StaticJsonDocument<kMaxJsonDoc> doc;
     auto err = deserializeJson(doc, resp);
     if (err) {
       Serial.println("Failed to parse response to JSON with " + String(err.c_str()));
@@ -177,7 +178,6 @@ void loop() {
   Serial.println("Got back:\n" + resp);
 
   // Parse the response into a JSON object
-  StaticJsonDocument<kMaxJsonDoc> doc;
   auto err = deserializeJson(doc, resp);
   if (err) {
     Serial.println("Failed to parse response to JSON with " + String(err.c_str()));
