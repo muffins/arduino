@@ -136,7 +136,8 @@ void loop() {
   
   // We fetch stock values in a loop around the ticker symbols, defined above
   // Keep track of our doc? Does this fix our stack traces?
-  StaticJsonDocument<kMaxJsonDoc> doc;
+  //StaticJsonDocument<kMaxJsonDoc> doc;
+  DynamicJsonDocument<kMaxJsonDoc> doc;
   for(const auto sym : kTickerSymbols) {
     Serial.println("Fetching price for " + sym);
 

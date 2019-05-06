@@ -1,30 +1,26 @@
+
+#include <ArduinoJson.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-//#include <SD.h>
+#include <SD.h>
 
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
-
-/********************************************************************/
 // Data wire is plugged into pin 5 on the Arduino 
 #define ONE_WIRE_BUS 5
-/********************************************************************/
+
 // Setup a oneWire instance to communicate with any OneWire devices  
-// (not just Maxim/Dallas temperature ICs) 
 OneWire oneWire(ONE_WIRE_BUS); 
-/********************************************************************/
+
 // Pass our oneWire reference to Dallas Temperature. 
 DallasTemperature sensors(&oneWire);
-/********************************************************************/
 
-// Init the SSD1306 display
-Adafruit_SSD1306 display = Adafruit_SSD1306();
+const int kCardSelect = 4;
 
+const int kSensorDelay = 1000;
 
-const size_t kFontSize = 2;
+// Total filename must be < 8 chars, because FAT
+const String kLogSuffix = "temp.log";
 
-
-
+const size_t kMaxJsonDoc = JSON_OBJECT_SIZE(3);
 
 // the setup function runs once when you press reset or power the board
 void setup() {
@@ -33,46 +29,59 @@ void setup() {
   // initialize digital pin LED_BUILTIN as an output.
   pinMode(LED_BUILTIN, OUTPUT);
 
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-  display.clearDisplay();
-  display.display();
-  display.setTextSize(kFontSize);
-  display.setTextColor(WHITE);
-  display.setCursor(0,0);
-  display.display();
-
-  /*
   Serial.println("Initializing SDcard");
-  if (!SD.begin(cardSelect)) {
-    Serial.println("Card init. failed!");
-    error(2);
+  if (!SD.begin(kCardSelect)) {
+    Serial.println("Failed to init SDcard, check that format is FAT16/32");
   }
-  */
 
-  Serial.println("Temperature sensor initialized");
+  Serial.println("Initialization done.");
   sensors.begin();
 }
 
-void log_data(String log) {
+// Helper function to write a log line to disk
+void log_data_to_disk(const String& msg, const String& fname) {
+  File dataFile = SD.open(fname.c_str(), FILE_WRITE);
+  if (dataFile) {
+    dataFile.println(msg);
+  } else {
+    Serial.println("Failed to open file " + fname + " for writing");
+  }
+  dataFile.close();
+}
+
+// Helper function to POST a log line to our SIEM
+void log_data_to_siem(const String& msg) {
   
 }
 
 void loop() {
+  
+  StaticJsonDocument<kMaxJsonDoc> doc;
+  
+  // User a naive hour-based uptime prexif ro our log file
+  // TODO: Use the ESP8266 to get the current time from an NTP server or something
+  auto uptime = millis();
+  auto hour = uptime / 3600000;
+  auto fname = String(hour) + "-" + kLogSuffix;
+  
   // We blink every time we read the temperature for some form of feedback
-  digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
-  delay(1000);                       // wait for a second
-  digitalWrite(LED_BUILTIN, LOW);    // turn the LED off by making the voltage LOW
-  delay(1000);                       // wait for a second
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(kSensorDelay);
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(kSensorDelay);
 
   // Send the command to get temperature readings
   sensors.requestTemperatures();
   auto temp = sensors.getTempFByIndex(0);
+  doc["uptime"] = uptime;
+  doc["temp"] = temp;
 
-  auto msg = "Temp is: " + String(temp) + "F";
-  Serial.println(msg);
+  String json {""};
+  serializeJson(doc, json);
 
-  display.clearDisplay();
-  display.setCursor(0,0);
-  display.print(msg);
-  display.display();
+  Serial.println("Sensor captured: " + json);
+
+  log_data_to_disk(json, fname);
+
+  delay(kSensorDelay);
 }
