@@ -3,7 +3,9 @@
 #include <DallasTemperature.h>
 #include <OneWire.h>
 #include <SD.h>
-#include <SoftwareSerial.h>
+
+// I2C lib
+#include <Wire.h>
 
 // Data wire is plugged into pin 5 on the Arduino 
 #define ONE_WIRE_BUS 5
@@ -31,10 +33,15 @@ const size_t kMaxJsonDoc = JSON_OBJECT_SIZE(3);
 //#define TX 1
 //SoftwareSerial toEsp(RX,TX);
 
+#define I2C_ADDRESS 9
+const int16_t I2C_MASTER = 0x42;
+const int16_t I2C_SLAVE = 0x08;
+
 // the setup function runs once when you press reset or power the board
 void setup() {
-  // Serial for ESP8266
-  Serial1.begin(9600);
+  // Startup I2C
+  Wire.begin();
+
   // Serial for debug logging
   Serial.begin(115200);
   
@@ -48,6 +55,8 @@ void setup() {
 
   sensors.begin();
   Serial.println("Initialization complete");
+
+
 }
 
 // Helper function to write a log line to disk
@@ -63,17 +72,26 @@ void log_data_to_disk(const String& msg, const String& fname) {
 
 // Helper function to POST a log line to our SIEM
 void log_data_to_siem(const String& msg) {
-  Serial.println("Checking for serial input from esp8266");
-  if (Serial1.available()) {
-    Serial.println("Sending JSON payload to ESP8266");
-    Serial1.println(msg.c_str());
-    delay(500);
-    String recv = Serial1.readString();
-    String response = "[FEATHER] Got back: " + recv;
-  }
+  Serial.println("Sending JSON payload to ESP8266 over i2c");
+  Wire.beginTransmission(I2C_SLAVE);
+  int ret = Wire.write(msg.c_str());
+  Serial.println("Wrote " + String(ret) + " bytes");
+  Wire.endTransmission();
 }
 
 void loop() {
+  // Try to find out what our I2C address is for esp8266
+  for (int address = 1; address <= 255; address++) {
+    //Serial.println("Scanning for i2c devices on "+ String(address));
+    Wire.beginTransmission(address); // Select address
+    int err = Wire.endTransmission();
+    if (err == 0) {
+      Serial.println("Found device at: " + String(address));
+    } else {
+      //Serial.println("Device transmit error: " + String(err));
+    }
+  }
+  
   StaticJsonDocument<kMaxJsonDoc> doc;
   
   // User a naive hour-based uptime prexif ro our log file

@@ -1,10 +1,15 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
+
 #include <ESP8266WiFi.h>
 #include <ESP8266WiFiMulti.h>
 #include <ESP8266HTTPClient.h>
-#include <SoftwareSerial.h>
+
+#include <Stream.h>
+
 #include <WiFiClientSecureBearSSL.h>
+// I2C lib
+#include <Wire.h>
 
 // Wifi credential information
 const String kSsid = "Pwn135";
@@ -32,15 +37,24 @@ const String kThingSpeakApiKey = "api_key=2RJ5MY0HKIFM286P";
 const String kThingSpeakField1 = "&field1=";
 const String kThingSpeakField2 = "field2=";
 
-// Define our RX/TX pins, TODO we need to verify these
-#define RX 6
-#define TX 7
-SoftwareSerial toFeather(RX,TX);
+// Global values used to receive data from i2c
+#define SDA_PIN 4
+#define SCL_PIN 5
+
+const int16_t I2C_MASTER = 0x42;
+const int16_t I2C_SLAVE = 0x08;
+
+char buff[0x100];
+boolean receiveFlag { false };
+
 
 // the setup function runs once when you press reset or power the board
 void setup() {
-  // Serial for ESP8266
-  toFeather.begin(9600);
+  // Configure I2C
+  Wire.begin(SDA_PIN, SCL_PIN, I2C_SLAVE);
+
+  // Attach a function to trigger when something is received.
+  Wire.onReceive(receiveEvent);
 
   // Serial for debug logging
   Serial.begin(115200);
@@ -61,6 +75,13 @@ void setup() {
   Serial.print(kSsid);
   Serial.print(" with IP address: ");
   Serial.println(WiFi.localIP());
+}
+
+// Our handler for receiving data via i2c
+void receiveEvent(size_t numBytes) {
+  int read = Wire.readBytes(buff, numBytes);
+  Serial.println("Read bytes: " + String(read));
+  receiveFlag = true;
 }
 
 // Fetches a string response from a remote API endpoint URI
@@ -103,28 +124,19 @@ void loop() {
   digitalWrite(LED_BUILTIN, LOW);
   delay(kDelay);
 
-  // Getting resource from a remote location
-  /*
-  String resp {""};
-  auto ret = getApiResponse(kApiUri, resp);
-  if (ret == 1) {
-    Serial.println("Fetch remote resource failed. Continuing");
-  } else {
-    Serial.println("STUN IP: " + resp);
-  }
-  */
-  Serial.println("Checking for serial input from feather board");
-  if (toFeather.available()) {
-    String recv = toFeather.readString();
-    String msg = "Received " + recv + " from feather";
-    Serial.write(msg.c_str());
-    String response = "[ESP8266] Recv: " + recv;
-    toFeather.write(response.c_str());
-  }
-  
-  // listen for user input and send it to the ESP8266
-  //if ( Serial.available() ) {  toFeather.write( Serial.read() );  }
-  
+  // If we've received a message, make an HTTPS request
+  Serial.println("Checking if data has been received...");
+  if (receiveFlag) {
+    Serial.println("[+] Received buffer from 32u4: " + String(buff));
 
+    String resp {""};
+    auto ret = getApiResponse(kApiUri, resp);
+    if (ret == 1) {
+      Serial.println("Fetch remote resource failed. Continuing");
+    } else {
+      Serial.println("STUN IP: " + resp);
+    }
+    receiveFlag = false;
+  }
   delay(kDelay);
 }
