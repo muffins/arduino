@@ -37,6 +37,8 @@ const size_t kMaxJsonDoc = JSON_OBJECT_SIZE(3);
 const int16_t I2C_MASTER = 0x42;
 const int16_t I2C_SLAVE = 0x08;
 
+char buff[0x100];
+
 // the setup function runs once when you press reset or power the board
 void setup() {
   // Startup I2C
@@ -44,6 +46,7 @@ void setup() {
 
   // Serial for debug logging
   Serial.begin(115200);
+  Serial1.begin(115200);
   
   // initialize digital pin LED_BUILTIN as an output.
   pinMode(LED_BUILTIN, OUTPUT);
@@ -73,10 +76,14 @@ void log_data_to_disk(const String& msg, const String& fname) {
 // Helper function to POST a log line to our SIEM
 void log_data_to_siem(const String& msg) {
   Serial.println("Sending JSON payload to ESP8266 over i2c");
-  Wire.beginTransmission(I2C_SLAVE);
-  int ret = Wire.write(msg.c_str());
-  Serial.println("Wrote " + String(ret) + " bytes");
-  Wire.endTransmission();
+  //Wire.beginTransmission(I2C_SLAVE);
+  char* bytes = msg.c_str();
+  Serial1.write(bytes, msg.length());
+  //int ret = Wire.write(msg.c_str());
+  Serial.println("Wrote " + String(msg.length()) + " bytes");
+  //Wire.endTransmission();
+  Serial1.readBytes(buff, 0x100);
+  Serial.println("Got back: " + String(buff));
 }
 
 void loop() {

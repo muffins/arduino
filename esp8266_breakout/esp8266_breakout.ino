@@ -44,7 +44,7 @@ const String kThingSpeakField2 = "field2=";
 const int16_t I2C_MASTER = 0x42;
 const int16_t I2C_SLAVE = 0x08;
 
-char buff[0x100];
+char jsonBuff[0x100];
 boolean receiveFlag { false };
 
 
@@ -67,50 +67,51 @@ void setup() {
   
   while (WiFiMulti.run() != WL_CONNECTED) {
     delay(500);
-    Serial.print(" .");
+    //Serial.print(" .");
   }
 
-  Serial.println();
-  Serial.print("Connected to ");
-  Serial.print(kSsid);
-  Serial.print(" with IP address: ");
-  Serial.println(WiFi.localIP());
+  //Serial.println();
+  //Serial.print("Connected to ");
+  //Serial.print(kSsid);
+  //Serial.print(" with IP address: ");
+  //Serial.println(WiFi.localIP());
+  memset(jsonBuff, 0, sizeof(jsonBuff));
 }
 
 // Our handler for receiving data via i2c
 void receiveEvent(size_t numBytes) {
-  int read = Wire.readBytes(buff, numBytes);
-  Serial.println("Read bytes: " + String(read));
+  int read = Wire.readBytes(jsonBuff, numBytes);
+  //Serial.println("Read bytes: " + String(read));
   receiveFlag = true;
 }
 
 // Fetches a string response from a remote API endpoint URI
 int getApiResponse(const String& uri, String& resp) {
-  Serial.println("Fetching resource from " + uri);
+  //Serial.println("Fetching resource from " + uri);
   std::unique_ptr<BearSSL::WiFiClientSecure>secure_client(new BearSSL::WiFiClientSecure);
   
   secure_client->setFingerprint(kCanHazThumbprint);
   secure_client->setTimeout(3000);
 
   HTTPClient https;
-  Serial.println("Beginning connection to secure API endpoint");
+  //Serial.println("Beginning connection to secure API endpoint");
   auto ret = https.begin(*secure_client, uri);
 
   if (!ret) {
-    Serial.println("Failed to connect to URI with " + String(ret));
+    //Serial.println("Failed to connect to URI with " + String(ret));
     return 1;
   }
   
-  Serial.println("Sending HTTP GET request");
+  //Serial.println("Sending HTTP GET request");
   auto status = https.GET();
   if (status != HTTP_CODE_OK) {
-    Serial.println("HTTPS GET failed with code " + String(status));
+    //Serial.println("HTTPS GET failed with code " + String(status));
     return status;
   }
 
   resp = https.getString();
-  Serial.println("Successfully retrieved data from " + kApiUri);
-  Serial.println(resp);
+  //Serial.println("Successfully retrieved data from " + kApiUri);
+  //Serial.println(resp);
 
   return status;
 }
@@ -125,18 +126,23 @@ void loop() {
   delay(kDelay);
 
   // If we've received a message, make an HTTPS request
-  Serial.println("Checking if data has been received...");
-  if (receiveFlag) {
-    Serial.println("[+] Received buffer from 32u4: " + String(buff));
+  //Serial.println("Checking if data has been received...");
+  Serial.readBytes(jsonBuff, 0x100);
+  //if (receiveFlag) {
+    //Serial.println("[+] Received buffer from 32u4: " + String(buff));
 
-    String resp {""};
-    auto ret = getApiResponse(kApiUri, resp);
-    if (ret == 1) {
-      Serial.println("Fetch remote resource failed. Continuing");
-    } else {
-      Serial.println("STUN IP: " + resp);
-    }
-    receiveFlag = false;
-  }
+    //String resp {""};
+    //auto ret = getApiResponse(kApiUri, resp);
+    //if (ret == 1) {
+      //Serial.println("Fetch remote resource failed. Continuing");
+    //} else {
+      //Serial.println("STUN IP: " + resp);
+  Serial.print("Received data");
+
+  memset(jsonBuff, 0, sizeof(jsonBuff));
+      
+    //}
+  //receiveFlag = false;
+  //}
   delay(kDelay);
 }
