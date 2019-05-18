@@ -23,7 +23,7 @@ ESP8266WiFiMulti WiFiMulti;
 // Thingspeak API information
 const char* kThingSpeakThumbPrint = "F9 C2 65 6C F9 EF 7F 66 8B F7 35 FE 15 EA 82 9F 5F 55 54 3E";
 const String kThingSpeakUri = "https://api.thingspeak.com/update?";
-const String kThingSpeakApiKey = "api_key=2RJ5MY0HKIFM286P";
+const String kThingSpeakApiKey = "api_key=XXXXXXXXXXXXXXX";
 const String kThingSpeakField1 = "&field1=";
 const String kThingSpeakField2 = "&field2=";
 
