@@ -20,8 +20,8 @@
 #include <WiFiClientSecureBearSSL.h>
 
 // Wifi credential information
-const String kSsid = "Pwn135";
-const String kPassword = "my.little.pwnies";
+const String kSsid = "XXXX";
+const String kPassword = "XXXXX";
 
 // AlphaVantage API information, they have free tokens ;)
 const String kApiUri = "https://www.alphavantage.co";
@@ -32,7 +32,7 @@ const String kApiFromCurrency = "from_currency=BTC&";
 // Note: we leave the & off of this one as the last piece is the kApiKey
 const String kApiToCurrency = "to_currency=USD";
 const String kApiSymbol = "symbol=";
-const String kApiKey = "&apikey=NDZC0JRPWV6C3UDA";
+const String kApiKey = "&apikey=XXXXXXXXXXXXXXX";
 
 // Define additional ticker symbols here
 const String kTickerSymbols[] = {
@@ -47,11 +47,16 @@ const String kTickerSymbols[] = {
   "BREW"  // Craft Brew Alliance
 };
 
-// Max document size that we can parse for JSON
-const size_t kMaxJsonDoc = 1024;
+// Max document size that we can parse for JSON, resp from AV has about 10 vals
+const size_t kMaxJsonDoc = 0x400;
+StaticJsonDocument<kMaxJsonDoc> doc;
 
 // Main loop pause
-const size_t kMainDelay = 15000;
+const size_t kDelay = 30000;
+// Seconds to wait between POSTs to AlphaVantage
+const size_t kStockPause = 15000;
+// Blink delay for the lights
+const size_t kBlinkDelay = 1000;
 
 // SHA1 fingerprint of the sites certificate
 const char* kAlphaVantageFingerprint = "9E 0B E5 F1 F4 1A 2F 29 8A 7A AA 9D B5 30 54 39 4C 20 A1 6C";
@@ -110,7 +115,6 @@ int getApiResponse(const String& uri, String& resp) {
   secure_client->setTimeout(3000);
 
   HTTPClient https;
-  Serial.println("Beginning connection to secure API endpoint");
   auto ret = https.begin(*secure_client, uri);
 
   if (!ret) {
@@ -118,7 +122,6 @@ int getApiResponse(const String& uri, String& resp) {
     return 1;
   }
   
-  Serial.println("Sending HTTP GET request");
   auto status = https.GET();
   if (status != HTTP_CODE_OK) {
     Serial.println("HTTPS GET failed with code " + String(status));
@@ -126,36 +129,40 @@ int getApiResponse(const String& uri, String& resp) {
   }
 
   resp = https.getString();
-  Serial.println("Successfully retrieved data from " + kApiUri);
-  Serial.println(resp);
-
   return status;
+}
+
+void blink() {
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(kBlinkDelay);
+  digitalWrite(LED_BUILTIN, LOW);
+  delay(kBlinkDelay);  
 }
 
 void loop() {
   
+  // Blink to indicate we're about to fetch new stocks
+  blink();
+
   // We fetch stock values in a loop around the ticker symbols, defined above
-  // Keep track of our doc? Does this fix our stack traces?
-  //StaticJsonDocument<kMaxJsonDoc> doc;
-  DynamicJsonDocument<kMaxJsonDoc> doc;
   for(const auto sym : kTickerSymbols) {
     Serial.println("Fetching price for " + sym);
 
     // Perform the API request
     String resp;
     String uri = kApiBaseUri + kApiStockPrice + kApiSymbol + sym + kApiKey;
-    Serial.println("Calling GET to " + uri);
     auto ret = getApiResponse(uri, resp);
     if (ret == 1) {
       Serial.println("Fetch remote resource failed. Continuing");
+      delay(kStockPause);
       continue;
     }
-    Serial.println("Got back:\n" + resp);
 
     // Parse the response into a JSON object
     auto err = deserializeJson(doc, resp);
     if (err) {
       Serial.println("Failed to parse response to JSON with " + String(err.c_str()));
+      delay(kStockPause);
       continue;
     }
 
@@ -164,11 +171,12 @@ void loop() {
     auto quote_msg = sym + ": " + quote["05. price"].as<String>() + ", " + 
                      quote["09. change"].as<String>() + " (" + 
                      quote["10. change percent"].as<String>() + ")";
+    Serial.println(quote_msg);
     display.clearDisplay();
     display.setCursor(0,0);
     display.print(quote_msg);
     display.display();
-    delay(kMainDelay);
+    delay(kStockPause);
   }
 
   // Lastly, fetch the USD -> BTC exchange rate, for funsies
@@ -176,7 +184,6 @@ void loop() {
   String uri = kApiBaseUri + kApiExchangeRate + kApiFromCurrency + 
                kApiToCurrency + kApiKey;
   auto ret = getApiResponse(uri, resp);
-  Serial.println("Got back:\n" + resp);
 
   // Parse the response into a JSON object
   auto err = deserializeJson(doc, resp);
@@ -188,11 +195,11 @@ void loop() {
     auto msg = er["1. From_Currency Code"].as<String>() + " -> " + 
                er["3. To_Currency Code"].as<String>() + ": " + 
                er["5. Exchange Rate"].as<String>();
-    Serial.println("Failed to parse response to JSON with " + String(err.c_str()));
+    Serial.println(msg);
     display.clearDisplay();
     display.setCursor(0,0);
     display.print(msg);
     display.display();
-    delay(kMainDelay);
+    delay(kDelay);
   }
 }

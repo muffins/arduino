@@ -7,8 +7,8 @@
 #include <WiFiClientSecureBearSSL.h>
 
 // Wifi credential information
-const String kSsid = "Pwn135";
-const String kPassword = "my.little.pwnies";
+const String kSsid = "XXXXXXX";
+const String kPassword = "XXXXXXX";
 
 // Overall delay, Thingspeak limits to 15 seconds
 const int kDelay = 20000;
