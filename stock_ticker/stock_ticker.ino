@@ -59,7 +59,7 @@ const size_t kStockPause = 15000;
 const size_t kBlinkDelay = 1000;
 
 // SHA1 fingerprint of the sites certificate
-const char* kAlphaVantageFingerprint = "9E 0B E5 F1 F4 1A 2F 29 8A 7A AA 9D B5 30 54 39 4C 20 A1 6C";
+const char* kAlphaVantageFingerprint = "C9 44 AD B9 48 6F 7C D1 64 5F ED 9B 49 53 56 88 DA FD FC 4B";
 
 // Init the SSD1306 display
 Adafruit_SSD1306 display = Adafruit_SSD1306();
